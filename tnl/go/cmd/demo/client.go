@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -19,18 +21,20 @@ import (
 var clientCount int
 var clientSleep int
 var clientNum int
+var clientSigma int
 
 func init() {
 	clientCmd.Flags().IntVarP(&clientCount, "count", "c", 0, "Number of messages to send (0 for infinity)")
 	clientCmd.Flags().IntVarP(&clientSleep, "sleep", "s", 2000, "Sleep time between messages in milliseconds")
 	clientCmd.Flags().IntVarP(&clientNum, "clients", "n", 1, "Number of simultaneous clients to run")
+	clientCmd.Flags().IntVarP(&clientSigma, "sigma", "z", 0, "Standard deviation for sleep time in milliseconds")
 }
 
 var clientCmd = &cobra.Command{
 	Use:   "client",
 	Short: "Run the TNL demo client",
 	Run: func(cmd *cobra.Command, args []string) {
-		runClient(clientCount, clientSleep, clientNum)
+		runClient(clientCount, clientSleep, clientNum, clientSigma)
 	},
 }
 
@@ -58,12 +62,13 @@ type demoClient struct {
 	id       int
 	msgCount int
 	sleepMs  int
+	sigmaMs  int
 	sendChan chan string
 	recvChan chan string
 	done     chan bool
 }
 
-func runClient(msgCount int, sleepMs int, numClients int) {
+func runClient(msgCount int, sleepMs int, numClients int, sigmaMs int) {
 	var wg sync.WaitGroup
 	clients := make([]*demoClient, numClients)
 
@@ -80,6 +85,7 @@ func runClient(msgCount int, sleepMs int, numClients int) {
 			id:       i + 1,
 			msgCount: msgCount,
 			sleepMs:  sleepMs,
+			sigmaMs:  sigmaMs,
 			sendChan: make(chan string, 10),
 			recvChan: make(chan string, 10),
 			done:     make(chan bool),
@@ -179,7 +185,15 @@ func (c *demoClient) start(wg *sync.WaitGroup) {
 				c.done <- true
 				return
 			}
-			time.Sleep(time.Duration(c.sleepMs) * time.Millisecond)
+
+			// Calculate sleep duration with sigma
+			durationMs := float64(c.sleepMs)
+			if c.sigmaMs > 0 {
+				durationMs += rand.NormFloat64() * float64(c.sigmaMs)
+			}
+			// Ensure non-negative duration
+			duration := time.Duration(math.Max(0, durationMs)) * time.Millisecond
+			time.Sleep(duration)
 		}
 	}()
 
