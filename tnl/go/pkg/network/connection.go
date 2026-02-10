@@ -7,6 +7,7 @@ import (
 	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
 	"github.com/jarrodhroberson/tnl-go/pkg/netio"
 	"github.com/jarrodhroberson/tnl-go/pkg/protocol"
+	"github.com/rs/zerolog/log"
 )
 
 // PacketNotify tracks info about a sent packet to handle acks/nacks.
@@ -101,6 +102,10 @@ func (nc *NetConnection) ReadPacketHeader(bs *bitstream.BitStream) (protocol.Net
 	}
 
 	if pkSequenceNumber-nc.lastRecvSeq > (protocol.MaxPacketWindowSize - 1) {
+		log.Debug().Str("addr", nc.Addr.String()).
+			Uint32("seq", pkSequenceNumber).
+			Uint32("lastRecv", nc.lastRecvSeq).
+			Msg("packet rejected: outside receive window")
 		return protocol.InvalidPacketType, 0, false // Outside window
 	}
 
@@ -268,4 +273,8 @@ func (nc *NetConnection) LastRecvSeq() uint32 {
 	nc.mu.Lock()
 	defer nc.mu.Unlock()
 	return nc.lastRecvSeq
+}
+
+func (nc *NetConnection) GetAddress() netio.Address {
+	return nc.Addr
 }

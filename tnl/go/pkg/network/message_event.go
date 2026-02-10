@@ -1,8 +1,6 @@
 package network
 
 import (
-	"fmt"
-
 	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
 )
 
@@ -11,6 +9,8 @@ type MessageEvent struct {
 	EventBase
 	Message string
 }
+
+var OnMessageReceived func(conn *EventConnection, msg string)
 
 func NewMessageEvent(msg string) *MessageEvent {
 	return &MessageEvent{
@@ -30,8 +30,10 @@ func (e *MessageEvent) Unpack(conn *NetConnection, bs *bitstream.BitStream) {
 	e.Message = bs.ReadString()
 }
 
-func (e *MessageEvent) Process(conn *NetConnection) {
-	fmt.Printf("Message from %s: %s\n", conn.Addr.String(), e.Message)
+func (e *MessageEvent) Process(conn *EventConnection) {
+	if OnMessageReceived != nil {
+		OnMessageReceived(conn, e.Message)
+	}
 }
 
 func init() {

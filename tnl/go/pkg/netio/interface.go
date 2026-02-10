@@ -152,3 +152,9 @@ func (i *Interface) writeLoop() {
 func (i *Interface) SendPacket(p *Packet) {
 	i.writeChan <- p
 }
+
+func (i *Interface) AddConnection(conn Connection) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	i.connections[conn.GetAddress().String()] = conn
+}

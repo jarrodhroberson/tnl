@@ -22,7 +22,7 @@ func (e *testEvent) Unpack(conn *NetConnection, bs *bitstream.BitStream) {
 	e.Data = bs.ReadString()
 }
 
-func (e *testEvent) Process(conn *NetConnection) {
+func (e *testEvent) Process(conn *EventConnection) {
 	e.Processed = true
 }
 

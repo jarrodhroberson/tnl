@@ -30,7 +30,7 @@ const (
 type Event interface {
 	Pack(conn *NetConnection, bs *bitstream.BitStream)
 	Unpack(conn *NetConnection, bs *bitstream.BitStream)
-	Process(conn *NetConnection)
+	Process(conn *EventConnection)
 	GetGuaranteeType() GuaranteeType
 	GetDirection() EventDirection
 }

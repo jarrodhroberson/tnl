@@ -163,7 +163,7 @@ func (ec *EventConnection) ReadEvents(bs *bitstream.BitStream) {
 	for bs.ReadFlag() {
 		ev := ec.readEvent(bs, nil)
 		if ev != nil {
-			ev.Process(ec.NetConnection)
+			ev.Process(ec)
 		}
 	}
 
@@ -179,7 +179,7 @@ func (ec *EventConnection) ReadEvents(bs *bitstream.BitStream) {
 	// Process any ready ordered events
 	for {
 		if ev, ok := ec.receivedEvents[ec.nextRecvEventSeq]; ok {
-			ev.Process(ec.NetConnection)
+			ev.Process(ec)
 			delete(ec.receivedEvents, ec.nextRecvEventSeq)
 			ec.nextRecvEventSeq++
 		} else {

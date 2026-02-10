@@ -21,7 +21,7 @@ type HandshakeManager struct {
 	kx               *crypto.KeyExchange
 
 	// Callbacks
-	OnConnectionAccepted func(addr netio.Address, sharedSecret []byte, iv []byte)
+	OnConnectionAccepted func(addr netio.Address, sharedSecret []byte, iv []byte, sendSeq uint32, recvSeq uint32)
 }
 
 func NewHandshakeManager() (*HandshakeManager, error) {
@@ -122,7 +122,7 @@ func (hm *HandshakeManager) handleConnectRequest(s netio.PacketSender, p *netio.
 	s.SendPacket(&netio.Packet{Addr: p.Addr, Data: buf.Bytes()})
 
 	if hm.OnConnectionAccepted != nil {
-		hm.OnConnectionAccepted(p.Addr, sharedSecret, accept.SessionIV)
+		hm.OnConnectionAccepted(p.Addr, sharedSecret, accept.SessionIV, accept.InitialSendSeq, accept.InitialRecvSeq)
 	}
 
 	log.Info().Str("addr", p.Addr.String()).Msg("connection accepted")

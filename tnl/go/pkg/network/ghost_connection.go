@@ -1,12 +1,14 @@
 package network
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
 	"github.com/jarrodhroberson/tnl-go/pkg/netio"
+	"github.com/jarrodhroberson/tnl-go/pkg/protocol"
 )
 
 // GhostInfo tracks the state of a ghost on a specific connection.
@@ -207,5 +209,20 @@ func (gc *GhostConnection) ReadGhosts(bs *bitstream.BitStream) {
 		if isNew {
 			obj.OnGhostAdd(gc)
 		}
+	}
+}
+
+func (gc *GhostConnection) ProcessPacket(data []byte) {
+	buf := bytes.NewReader(data)
+	bs := bitstream.NewReader(buf)
+
+	pktType, _, ok := gc.ReadPacketHeader(bs)
+	if !ok {
+		return
+	}
+
+	if pktType == protocol.DataPacket {
+		gc.ReadEvents(bs)
+		gc.ReadGhosts(bs)
 	}
 }
