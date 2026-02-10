@@ -1,0 +1,12 @@
+[package]
+name = "tnl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22"
+md-5 = "0.10"
+sha2 = "0.10"
+crc32fast = "1.4"
+hex = "0.4"
+bitflags = "2.5"
