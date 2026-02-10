@@ -3,29 +3,34 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"time"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
-	"github.com/jarrodhroberson/tnl-go/pkg/crypto"
-	"github.com/jarrodhroberson/tnl-go/pkg/handshake"
-	"github.com/jarrodhroberson/tnl-go/pkg/netio"
-	"github.com/jarrodhroberson/tnl-go/pkg/network"
-	"github.com/jarrodhroberson/tnl-go/pkg/protocol"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/crypto"
+	"github.com/jarrodhroberson/tnl-go/tnl/handshake"
+	"github.com/jarrodhroberson/tnl-go/tnl/netio"
+	"github.com/jarrodhroberson/tnl-go/tnl/network"
+	"github.com/jarrodhroberson/tnl-go/tnl/protocol"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 var clientCount int
+var clientSleep int
+var clientNum int
 
 func init() {
 	clientCmd.Flags().IntVarP(&clientCount, "count", "c", 0, "Number of messages to send (0 for infinity)")
+	clientCmd.Flags().IntVarP(&clientSleep, "sleep", "s", 2000, "Sleep time between messages in milliseconds")
+	clientCmd.Flags().IntVarP(&clientNum, "clients", "n", 1, "Number of simultaneous clients to run")
 }
 
 var clientCmd = &cobra.Command{
 	Use:   "client",
 	Short: "Run the TNL demo client",
 	Run: func(cmd *cobra.Command, args []string) {
-		runClient(clientCount)
+		runClient(clientCount, clientSleep, clientNum)
 	},
 }
 
@@ -49,7 +54,47 @@ func (h *clientHandshakeHandler) HandlePacket(s netio.PacketSender, p *netio.Pac
 	}
 }
 
-func runClient(msgCount int) {
+type demoClient struct {
+	id       int
+	msgCount int
+	sleepMs  int
+	sendChan chan string
+	recvChan chan string
+	done     chan bool
+}
+
+func runClient(msgCount int, sleepMs int, numClients int) {
+	var wg sync.WaitGroup
+	clients := make([]*demoClient, numClients)
+
+	// Global hook to route messages to per-client channels
+	network.OnMessageReceived = func(conn *network.EventConnection, msg string) {
+		if c, ok := conn.Tag.(*demoClient); ok {
+			c.recvChan <- msg
+		}
+	}
+
+	for i := 0; i < numClients; i++ {
+		wg.Add(1)
+		clients[i] = &demoClient{
+			id:       i + 1,
+			msgCount: msgCount,
+			sleepMs:  sleepMs,
+			sendChan: make(chan string, 10),
+			recvChan: make(chan string, 10),
+			done:     make(chan bool),
+		}
+		go clients[i].start(&wg)
+	}
+
+	wg.Wait()
+	log.Info().Msg("All clients finished execution.")
+}
+
+func (c *demoClient) start(wg *sync.WaitGroup) {
+	defer wg.Done()
+	prefix := fmt.Sprintf("[Client #%d]", c.id)
+
 	serverAddr, _ := netio.ParseAddress("127.0.0.1:28000")
 	iface, _ := netio.NewInterface(":0") // Bind to random port
 
@@ -59,31 +104,31 @@ func runClient(msgCount int) {
 	}
 	iface.SetHandshakeHandler(h)
 	iface.Start()
+	defer iface.Stop()
 
 	// 1. Handshake: Send Challenge Request
 	clientNonce := make([]byte, 16)
-	// (Fill with random if needed, but 0 is fine for demo)
-
 	buf := &bytes.Buffer{}
 	bs := bitstream.NewWriter(buf)
 	bs.WriteUint8(uint8(protocol.ConnectChallengeRequest))
 	(&handshake.ChallengeRequest{ClientNonce: clientNonce}).Write(bs)
 	bs.Flush()
 
-	log.Info().Msg("Client sending ConnectChallengeRequest")
+	log.Info().Msgf("%s sending ConnectChallengeRequest", prefix)
 	iface.SendPacket(&netio.Packet{Addr: serverAddr, Data: buf.Bytes()})
 
 	// 2. Wait for Challenge Response
 	var res *handshake.ChallengeResponse
 	select {
 	case res = <-h.challengeRes:
-		log.Info().Msg("Client received ConnectChallengeResponse")
+		log.Info().Msgf("%s received ConnectChallengeResponse", prefix)
 	case <-time.After(5 * time.Second):
-		log.Fatal().Msg("Handshake timed out waiting for challenge response")
+		log.Error().Msgf("%s handshake timed out waiting for challenge response", prefix)
+		return
 	}
 
 	// 3. Solve Puzzle & Send Connect Request
-	log.Info().Uint32("difficulty", res.Difficulty).Msg("Solving puzzle...")
+	log.Info().Uint32("difficulty", res.Difficulty).Msgf("%s solving puzzle...", prefix)
 	puzzle := crypto.NewPuzzle()
 	solution := puzzle.SolvePuzzle(res.ClientIdentity, clientNonce, res.ServerNonce, res.Difficulty)
 
@@ -101,63 +146,70 @@ func runClient(msgCount int) {
 	req.Write(bs)
 	bs.Flush()
 
-	log.Info().Msg("Client sending ConnectRequest")
+	log.Info().Msgf("%s sending ConnectRequest", prefix)
 	iface.SendPacket(&netio.Packet{Addr: serverAddr, Data: buf.Bytes()})
 
 	// 4. Wait for Accept
 	var acc *handshake.ConnectAccept
 	select {
 	case acc = <-h.connectAcc:
-		log.Info().Msg("Client received ConnectAccept. Handshake Complete!")
+		log.Info().Msgf("%s received ConnectAccept. Handshake Complete!", prefix)
 	case <-time.After(5 * time.Second):
-		log.Fatal().Msg("Handshake timed out waiting for connect accept")
+		log.Error().Msgf("%s handshake timed out waiting for connect accept", prefix)
+		return
 	}
 
 	// 5. Establish GhostConnection
-	// Sequence roles are reversed from the server's perspective:
-	// acc.InitialSendSeq is what the server is sending (client's Recv)
-	// acc.InitialRecvSeq is what the server is expecting (client's Send)
 	gc := network.NewGhostConnection(serverAddr, acc.InitialRecvSeq)
 	gc.SetInitialRecvSequence(acc.InitialSendSeq)
+	gc.Tag = c // Associate this client struct with the connection
 	iface.AddConnection(gc)
 
-	// Implement client-side message logging
-	network.OnMessageReceived = func(conn *network.EventConnection, msg string) {
-		log.Info().Str("server", conn.Addr.String()).Msgf("Received: %s", msg)
-	}
-
-	done := make(chan bool)
-	// Start message generation loop in a goroutine
+	// Message generation loop
 	go func() {
 		count := 0
 		for {
 			count++
-			msg := fmt.Sprintf("Hello from client! Message #%d", count)
-			log.Debug().Msgf("Posting event: %s", msg)
-			gc.PostEvent(network.NewMessageEvent(msg))
+			msg := fmt.Sprintf("Hello from client #%d! Message #%d", c.id, count)
+			c.sendChan <- msg
 
-			if msgCount > 0 && count >= msgCount {
-				log.Info().Msgf("Sent %d messages, exiting...", msgCount)
+			if c.msgCount > 0 && count >= c.msgCount {
 				// Wait a bit for the last packet to be sent by the pulse loop
 				time.Sleep(500 * time.Millisecond)
-				done <- true
+				c.done <- true
 				return
 			}
-			time.Sleep(2 * time.Second)
+			time.Sleep(time.Duration(c.sleepMs) * time.Millisecond)
 		}
 	}()
 
-	if msgCount > 0 {
-		log.Info().Msgf("Client running. Sending %d MessageEvents every 2s...", msgCount)
+	// Message receiver loop
+	go func() {
+		for msg := range c.recvChan {
+			log.Info().Str("server", serverAddr.String()).Msgf("%s Received: %s", prefix, msg)
+		}
+	}()
+
+	if c.msgCount > 0 {
+		log.Info().Msgf("%s running. Sending %d messages every %dms...", prefix, c.msgCount, c.sleepMs)
 	} else {
-		log.Info().Msg("Client running. Sending MessageEvents indefinitely every 2s...")
+		log.Info().Msgf("%s running. Sending messages indefinitely every %dms...", prefix, c.sleepMs)
 	}
 
 	// Client pulse loop
 	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
+			// Drain send channel and post to GhostConnection
+			select {
+			case msg := <-c.sendChan:
+				log.Debug().Msgf("%s posting event: %s", prefix, msg)
+				gc.PostEvent(network.NewMessageEvent(msg))
+			default:
+			}
+
 			buf := &bytes.Buffer{}
 			bs := bitstream.NewWriter(buf)
 
@@ -169,7 +221,7 @@ func runClient(msgCount int) {
 			if buf.Len() > 0 {
 				iface.SendPacket(&netio.Packet{Addr: gc.Addr, Data: buf.Bytes()})
 			}
-		case <-done:
+		case <-c.done:
 			return
 		}
 	}

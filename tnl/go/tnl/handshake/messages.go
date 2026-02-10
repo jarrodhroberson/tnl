@@ -1,7 +1,7 @@
 package handshake
 
 import (
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
 )
 
 // ChallengeRequest (Client -> Server)

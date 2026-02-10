@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
-	"github.com/jarrodhroberson/tnl-go/pkg/netio"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/netio"
 )
 
 // eventNote tracks an event and its sequence for ordering.

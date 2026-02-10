@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
 )
 
 // ConnectAccept (Server -> Client)

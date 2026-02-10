@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
-	"github.com/jarrodhroberson/tnl-go/pkg/network"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/network"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"

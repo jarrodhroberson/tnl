@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
-	"github.com/jarrodhroberson/tnl-go/pkg/netio"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/netio"
 )
 
 type MovingObject struct {

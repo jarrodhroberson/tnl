@@ -6,7 +6,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
 )
 
 // Replicatable is the interface for objects that can be ghosted across connections.

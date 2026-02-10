@@ -1,7 +1,7 @@
 package network
 
 import (
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
 )
 
 // MessageEvent is a simple reliable ordered event for sending strings.

@@ -85,6 +85,18 @@ func (i *Interface) readLoop() {
 			buf := GetPacketBuffer()
 			n, addr, err := i.conn.ReadFromUDP(buf)
 			if err != nil {
+				// Check if the error is due to the connection being closed
+				select {
+				case <-i.ctx.Done():
+					// Context cancelled, connection closed intentionally
+					return
+				default:
+				}
+
+				if opErr, ok := err.(*net.OpError); ok && opErr.Err.Error() == "use of closed network connection" {
+					return
+				}
+
 				log.Error().Err(err).Msg("read error")
 				PutPacketBuffer(buf)
 				continue

@@ -3,7 +3,7 @@ package netio
 import (
 	"sync"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/protocol"
+	"github.com/jarrodhroberson/tnl-go/tnl/protocol"
 )
 
 // PacketPool provides a pool of byte slices for packet data.

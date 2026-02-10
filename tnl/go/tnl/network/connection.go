@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
-	"github.com/jarrodhroberson/tnl-go/pkg/netio"
-	"github.com/jarrodhroberson/tnl-go/pkg/protocol"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/netio"
+	"github.com/jarrodhroberson/tnl-go/tnl/protocol"
 	"github.com/rs/zerolog/log"
 )
 
@@ -49,6 +49,9 @@ type NetConnection struct {
 
 	// Termination
 	state protocol.ConnectionState
+
+	// Tag is an application-defined value associated with the connection.
+	Tag interface{}
 }
 
 func NewNetConnection(addr netio.Address, initialSendSeq uint32) *NetConnection {

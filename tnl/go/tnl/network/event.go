@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
 )
 
 // GuaranteeType defines the delivery guarantee for a NetEvent.

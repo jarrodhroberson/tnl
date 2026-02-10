@@ -5,11 +5,11 @@ import (
 	"crypto/rand"
 	"io"
 
-	"github.com/jarrodhroberson/tnl-go/pkg/bitstream"
-	"github.com/jarrodhroberson/tnl-go/pkg/crypto"
-	"github.com/jarrodhroberson/tnl-go/pkg/handshake"
-	"github.com/jarrodhroberson/tnl-go/pkg/netio"
-	"github.com/jarrodhroberson/tnl-go/pkg/protocol"
+	"github.com/jarrodhroberson/tnl-go/tnl/bitstream"
+	"github.com/jarrodhroberson/tnl-go/tnl/crypto"
+	"github.com/jarrodhroberson/tnl-go/tnl/handshake"
+	"github.com/jarrodhroberson/tnl-go/tnl/netio"
+	"github.com/jarrodhroberson/tnl-go/tnl/protocol"
 	"github.com/rs/zerolog/log"
 )
 
